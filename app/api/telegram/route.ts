@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchSingleTweet } from '@/lib/twitter';
+import { getContext } from '@/lib/tavily';
+import { analyzeSingleTweet } from '@/lib/claude';
+import { saveSingleAnalysis } from '@/lib/supabase';
+import { sendSingleTweetEmail } from '@/lib/email';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 
@@ -32,18 +37,20 @@ export async function POST(req: NextRequest) {
   await sendTelegramMessage(chatId, '⏳ Analisi in corso...');
 
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const tweet = await fetchSingleTweet(tweetId);
+    if (!tweet) throw new Error('Tweet non trovato');
 
-    const res = await fetch(`${baseUrl}/api/analyze-single`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tweetId, chatId }),
-    });
+    const context = await getContext(tweet.text);
+    const analysis = await analyzeSingleTweet(tweet, context);
+    await saveSingleAnalysis(tweet, analysis);
+    await sendSingleTweetEmail(tweet, analysis);
 
-    if (!res.ok) throw new Error(`analyze-single failed: ${res.status}`);
-  } catch (err) {
+    const preview = analysis.slice(0, 800) + (analysis.length > 800 ? '\n\n[...] 📧 Report completo via email.' : '');
+    await sendTelegramMessage(chatId, `✅ <b>Analisi completata</b>\n\n${preview}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Errore sconosciuto';
     console.error(err);
-    await sendTelegramMessage(chatId, '❌ Errore durante l\'analisi. Riprova più tardi.');
+    await sendTelegramMessage(chatId, `❌ Errore: ${msg}`);
   }
 
   return NextResponse.json({ ok: true });
