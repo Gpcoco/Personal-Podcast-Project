@@ -25,8 +25,7 @@ export async function POST(req: NextRequest) {
     if (!tweet) throw new Error('Tweet non trovato');
 
     // 2. Keywords + web context
-    const keywords = await extractKeywords(tweet.text);
-    const context = await fetchWebContext(keywords);
+    const context = await getContext(tweet.text);
 
     // 3. Analisi Sonnet
     const analysis = await analyzeSingleTweet(tweet, context);
@@ -44,11 +43,12 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Errore sconosciuto';
     console.error(err);
     if (chatId) {
-      await sendTelegramMessage(chatId, `❌ Errore: ${err.message}`);
+await sendTelegramMessage(chatId, `❌ Errore: ${message}`);
     }
-    return NextResponse.json({ error: err.message }, { status: 500 });
+return NextResponse.json({ error: message }, { status: 500 });
   }
 }
