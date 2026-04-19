@@ -1,5 +1,5 @@
-import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { notFound } from 'next/navigation';
 
 function formatAnalysis(text: string) {
   const html = text
@@ -13,11 +13,13 @@ function formatAnalysis(text: string) {
   return `<p>${html}</p>`;
 }
 
-export default async function AnalysisPage({ params }: { params: { id: string } }) {
+export default async function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
   const { data, error } = await supabase
     .from('twitter_analysis')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (error || !data) notFound();
