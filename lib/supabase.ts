@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { Tweet } from "./twitter";
 
-const supabase = createClient(
+export const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_KEY!
 );
@@ -54,8 +54,7 @@ export async function getLatestAnalyses(limit = 20) {
 export async function saveSingleAnalysis(
   tweet: { id: string; author: string; text: string; created_at: string; like_count: number; view_count: number; is_reply: boolean },
   analysis: string
-) {
-  // Salva raw tweet
+): Promise<{ id: string }> {
   await supabase.from('raw_tweets').upsert({
     tweet_id: tweet.id,
     author: tweet.author,
@@ -67,11 +66,17 @@ export async function saveSingleAnalysis(
     fetched_at: new Date().toISOString(),
   }, { onConflict: 'tweet_id' });
 
-  // Salva analisi
-  await supabase.from('twitter_analysis').insert({
-    author: tweet.author,
-    tweet_count: 1,
-    analysis,
-    retrieved_at: new Date().toISOString(),
-  });
+  const { data, error } = await supabase
+    .from('twitter_analysis')
+    .insert({
+      author: tweet.author,
+      tweet_count: 1,
+      analysis,
+      retrieved_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (error || !data) throw new Error('Errore salvataggio analisi');
+  return { id: data.id };
 }

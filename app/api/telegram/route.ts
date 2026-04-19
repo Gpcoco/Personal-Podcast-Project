@@ -3,9 +3,9 @@ import { fetchSingleTweet } from '@/lib/twitter';
 import { getContext } from '@/lib/tavily';
 import { analyzeSingleTweet } from '@/lib/claude';
 import { saveSingleAnalysis } from '@/lib/supabase';
-import { sendSingleTweetEmail } from '@/lib/email';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL!;
 
 async function sendTelegramMessage(chatId: number, text: string) {
   await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -42,11 +42,11 @@ export async function POST(req: NextRequest) {
 
     const context = await getContext(tweet.text);
     const analysis = await analyzeSingleTweet(tweet, context);
-    await saveSingleAnalysis(tweet, analysis);
-    await sendSingleTweetEmail(tweet, analysis);
+    const saved = await saveSingleAnalysis(tweet, analysis);
 
-    const preview = analysis.slice(0, 800) + (analysis.length > 800 ? '\n\n[...] 📧 Report completo via email.' : '');
-    await sendTelegramMessage(chatId, `✅ <b>Analisi completata</b>\n\n${preview}`);
+    const link = `${BASE_URL}/analysis/${saved.id}`;
+    await sendTelegramMessage(chatId, `✅ <b>Analisi completata</b>\n\n🔗 <a href="${link}">Leggi l'analisi completa</a>`);
+
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Errore sconosciuto';
     console.error(err);
