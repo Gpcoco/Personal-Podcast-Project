@@ -77,7 +77,8 @@ export async function analyzeSingleTweet(
   tweet: { id: string; author: string; text: string; created_at: string; like_count: number; view_count: number },
   context: string
 ): Promise<string> {
-  const prompt = `Analizza questo tweet con il contesto web fornito.
+  const prompt = `Sei un esperto analista che aiuta a comprendere contenuti tecnici e complessi.
+Analizza questo tweet in profondità, spiegando ogni concetto tecnico o termine specifico in modo chiaro.
 
 🐦 TWEET di @${tweet.author} (${new Date(tweet.created_at).toLocaleDateString('it-IT')})
 "${tweet.text}"
@@ -86,10 +87,31 @@ export async function analyzeSingleTweet(
 📰 CONTESTO WEB:
 ${context}
 
-Fornisci:
-- 📌 RILEVANZA: impatto, pubblico di riferimento, urgenza
-- 💡 SPUNTI: domanda aperta, connessioni con trend, angolo critico
-- 🔍 CONTESTO: cosa aggiunge il contesto web alla comprensione del tweet`;
+Fornisci un'analisi dettagliata con questo formato:
+
+📖 DI COSA PARLA
+Spiega in 2-3 frasi semplici il messaggio principale del tweet, come se lo spiegassi a qualcuno che non conosce il settore.
+
+🔬 TERMINI E CONCETTI CHIAVE
+Per ogni termine tecnico o concetto specifico presente nel tweet, spiega:
+- Cosa significa
+- Perché è importante in questo contesto
+- Un esempio concreto se utile
+
+📌 RILEVANZA
+- Impatto: Alto / Medio / Basso — perché
+- Chi riguarda: [settori, professioni, persone coinvolte]
+- Urgenza: [quanto è attuale e perché]
+
+💡 APPROFONDIMENTO
+- Cosa c'è dietro: il contesto più ampio che serve per capire davvero
+- Connessioni: come si collega a trend, eventi o tecnologie correlate
+- Domanda aperta: una questione che questo tweet solleva ma non risponde
+
+⚠️ PUNTI DI ATTENZIONE
+Segnala eventuali affermazioni discutibili, semplificazioni eccessive o aspetti che meritano verifica.
+
+Rispondi in italiano. Sii preciso ma accessibile.`;
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-5',
