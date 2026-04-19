@@ -82,3 +82,42 @@ export async function sendReport(
     `,
   });
 }
+
+export async function sendSingleTweetEmail(
+  tweet: { author: string; text: string; created_at: string; like_count: number; view_count: number },
+  analysis: string
+) {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.GMAIL_USER!,
+      pass: process.env.GMAIL_APP_PASSWORD!,
+    },
+  });
+
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: auto;">
+      <h2>🔍 Analisi Tweet — @${tweet.author}</h2>
+      <div style="background: #f5f5f5; padding: 16px; border-left: 4px solid #1da1f2; margin-bottom: 24px;">
+        <p style="margin:0; font-style: italic;">"${tweet.text}"</p>
+        <p style="margin:8px 0 0; font-size: 12px; color: #666;">
+          ${new Date(tweet.created_at).toLocaleDateString('it-IT')} &nbsp;|&nbsp;
+          ❤️ ${tweet.like_count} &nbsp;|&nbsp;
+          👁️ ${tweet.view_count}
+        </p>
+      </div>
+      <div style="white-space: pre-wrap; line-height: 1.6;">
+        ${analysis.replace(/\n/g, '<br>')}
+      </div>
+      <hr style="margin-top: 32px; border: none; border-top: 1px solid #eee;">
+      <p style="font-size: 11px; color: #aaa;">Twitter Analytics · Analisi on-demand</p>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: process.env.GMAIL_USER!,
+    to: process.env.RECIPIENT_EMAIL!,
+    subject: `🔍 Analisi Tweet @${tweet.author} — ${new Date().toLocaleDateString('it-IT')}`,
+    html,
+  });
+}

@@ -50,3 +50,28 @@ export async function getLatestAnalyses(limit = 20) {
   if (error) throw new Error(`Supabase getLatestAnalyses: ${error.message}`);
   return data;
 }
+
+export async function saveSingleAnalysis(
+  tweet: { id: string; author: string; text: string; created_at: string; like_count: number; view_count: number; is_reply: boolean },
+  analysis: string
+) {
+  // Salva raw tweet
+  await supabase.from('raw_tweets').upsert({
+    tweet_id: tweet.id,
+    author: tweet.author,
+    text: tweet.text,
+    created_at_twitter: tweet.created_at,
+    like_count: tweet.like_count,
+    view_count: tweet.view_count,
+    is_reply: tweet.is_reply,
+    fetched_at: new Date().toISOString(),
+  }, { onConflict: 'tweet_id' });
+
+  // Salva analisi
+  await supabase.from('twitter_analysis').insert({
+    author: tweet.author,
+    tweet_count: 1,
+    analysis,
+    retrieved_at: new Date().toISOString(),
+  });
+}

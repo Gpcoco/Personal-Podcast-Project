@@ -60,3 +60,38 @@ export function groupByAuthor(tweets: Tweet[]): Record<string, Tweet[]> {
     return acc;
   }, {} as Record<string, Tweet[]>);
 }
+
+export async function fetchSingleTweet(tweetId: string) {
+  const res = await fetch(
+    `https://api.twitterapi.io/twitter/tweet/advanced_search?queryType=Latest&query=conversation_id:${tweetId}`,
+    {
+      headers: { 'X-API-Key': process.env.TWITTERAPI_KEY! },
+    }
+  );
+
+  if (!res.ok) throw new Error(`twitterapi.io error: ${res.status}`);
+await res.json();
+  // Prova prima con endpoint diretto
+  const res2 = await fetch(
+    `https://api.twitterapi.io/twitter/tweets?tweet_ids=${tweetId}`,
+    {
+      headers: { 'X-API-Key': process.env.TWITTERAPI_KEY! },
+    }
+  );
+
+  if (!res2.ok) throw new Error(`twitterapi.io error: ${res2.status}`);
+  const data2 = await res2.json();
+
+  const t = data2?.tweets?.[0];
+  if (!t) throw new Error('Tweet non trovato');
+
+  return {
+    id: t.id,
+    author: t.author?.userName ?? t.author?.name ?? 'unknown',
+    text: t.text,
+    created_at: t.createdAt,
+    like_count: t.likeCount ?? 0,
+    view_count: t.viewCount ?? 0,
+    is_reply: !!t.inReplyToId,
+  };
+}

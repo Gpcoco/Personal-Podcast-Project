@@ -72,3 +72,33 @@ ${tweetText}`,
   if (block.type !== "text") throw new Error("Unexpected response type");
   return block.text;
 }
+
+export async function analyzeSingleTweet(
+  tweet: { id: string; author: string; text: string; created_at: string; like_count: number; view_count: number },
+  context: string
+): Promise<string> {
+  const prompt = `Analizza questo tweet con il contesto web fornito.
+
+🐦 TWEET di @${tweet.author} (${new Date(tweet.created_at).toLocaleDateString('it-IT')})
+"${tweet.text}"
+❤️ ${tweet.like_count} like | 👁️ ${tweet.view_count} visualizzazioni
+
+📰 CONTESTO WEB:
+${context}
+
+Fornisci:
+- 📌 RILEVANZA: impatto, pubblico di riferimento, urgenza
+- 💡 SPUNTI: domanda aperta, connessioni con trend, angolo critico
+- 🔍 CONTESTO: cosa aggiunge il contesto web alla comprensione del tweet`;
+
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 1024,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  return response.content
+    .filter((b) => b.type === 'text')
+    .map((b) => (b as { type: 'text'; text: string }).text)
+    .join('\n');
+}
