@@ -4,6 +4,8 @@ import { analyzeTweets } from "@/lib/claude";
 import { saveRawTweets, saveAnalysis } from "@/lib/supabase";
 import { sendReport } from "@/lib/email";
 
+export const maxDuration = 60;
+
 export async function POST() {
   try {
     const retrievedAt = new Date();

@@ -32,9 +32,7 @@ export async function POST(req: NextRequest) {
   await sendTelegramMessage(chatId, '⏳ Analisi in corso...');
 
   try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
     const res = await fetch(`${baseUrl}/api/analyze-single`, {
       method: 'POST',
