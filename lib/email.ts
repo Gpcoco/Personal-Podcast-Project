@@ -95,24 +95,45 @@ export async function sendSingleTweetEmail(
     },
   });
 
-  const html = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: auto;">
-      <h2>🔍 Analisi Tweet — @${tweet.author}</h2>
-      <div style="background: #f5f5f5; padding: 16px; border-left: 4px solid #1da1f2; margin-bottom: 24px;">
-        <p style="margin:0; font-style: italic;">"${tweet.text}"</p>
-        <p style="margin:8px 0 0; font-size: 12px; color: #666;">
-          ${new Date(tweet.created_at).toLocaleDateString('it-IT')} &nbsp;|&nbsp;
-          ❤️ ${tweet.like_count} &nbsp;|&nbsp;
-          👁️ ${tweet.view_count}
-        </p>
-      </div>
-      <div style="white-space: pre-wrap; line-height: 1.6;">
-        ${analysis.replace(/\n/g, '<br>')}
-      </div>
-      <hr style="margin-top: 32px; border: none; border-top: 1px solid #eee;">
-      <p style="font-size: 11px; color: #aaa;">Twitter Analytics · Analisi on-demand</p>
+  // Converti markdown base in HTML
+  const formattedAnalysis = analysis
+    .replace(/^## (.+)$/gm, '<h2 style="color:#1a1a1a;margin-top:28px;margin-bottom:8px;">$1</h2>')
+    .replace(/^### (.+)$/gm, '<h3 style="color:#333;margin-top:20px;margin-bottom:6px;">$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^- (.+)$/gm, '<li style="margin-bottom:6px;">$1</li>')
+    .replace(/(<li.*<\/li>\n?)+/g, '<ul style="padding-left:20px;margin:8px 0;">$&</ul>')
+    .replace(/\n{2,}/g, '</p><p style="margin:0 0 12px;">')
+    .replace(/\n/g, '<br>');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f9f9f9;">
+  <div style="font-family:Georgia,serif;max-width:680px;margin:32px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+    
+    <div style="background:#1da1f2;padding:24px 32px;">
+      <h1 style="margin:0;color:#fff;font-size:20px;">🔍 Analisi Tweet</h1>
+      <p style="margin:4px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">@${tweet.author} · ${new Date(tweet.created_at).toLocaleDateString('it-IT')}</p>
     </div>
-  `;
+
+    <div style="padding:24px 32px;background:#f0f8ff;border-left:4px solid #1da1f2;">
+      <p style="margin:0;font-style:italic;color:#333;line-height:1.6;">"${tweet.text}"</p>
+      <p style="margin:12px 0 0;font-size:12px;color:#888;">
+        ❤️ ${tweet.like_count} like &nbsp;|&nbsp; 👁️ ${tweet.view_count} visualizzazioni
+      </p>
+    </div>
+
+    <div style="padding:32px;line-height:1.7;color:#222;font-size:15px;">
+      <p style="margin:0 0 12px;">${formattedAnalysis}</p>
+    </div>
+
+    <div style="padding:16px 32px;background:#f5f5f5;border-top:1px solid #eee;">
+      <p style="margin:0;font-size:11px;color:#aaa;">Twitter Analytics · Analisi on-demand</p>
+    </div>
+
+  </div>
+</body>
+</html>`;
 
   await transporter.sendMail({
     from: process.env.GMAIL_USER!,
