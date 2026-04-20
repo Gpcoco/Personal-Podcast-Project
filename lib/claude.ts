@@ -8,7 +8,6 @@ export async function analyzeTweets(
   author: string,
   tweets: Tweet[]
 ): Promise<string> {
-  // Recupera contesto per ogni tweet
   const tweetsWithContext = await Promise.all(
     tweets.map(async (t) => {
       const context = await getContext(t.text);
@@ -21,8 +20,7 @@ export async function analyzeTweets(
       ({ tweet: t, context }, i) =>
         `${i + 1}. [${t.createdAt}] ${t.text}
    (likes: ${t.likeCount}, views: ${t.viewCount})
-   CONTESTO WEB:
-   ${context}`
+   CONTESTO WEB: ${context}`
     )
     .join("\n\n---\n\n");
 
@@ -33,34 +31,33 @@ export async function analyzeTweets(
       {
         role: "user",
         content: `Analizza i seguenti ${tweets.length} tweet di @${author} delle ultime 24 ore.
-Hai a disposizione contesto web aggiornato per ciascuno — usalo per arricchire l'analisi.
+Usa il contesto web per arricchire l'analisi.
 
-Per ciascuno, usa esattamente questo formato:
+Per ciascuno:
 
 ---
 🐦 TWEET
-"[testo del tweet]"
-📅 [data e ora]
+"[testo]" — 📅 [data]
 
 📌 RILEVANZA
-- Impatto: Alto / Medio / Basso
-- Pubblico: [chi riguarda]
+- Impatto: Alto / Medio / Basso — perché
+- Chi riguarda: [settori/professioni]
 - Urgenza: [quanto è attuale]
 
 💡 SPUNTI
-- Domanda aperta: [una domanda che solleva]
-- Connessioni: [temi collegati, usa il contesto web]
-- Angolo critico: [prospettiva controintuitiva]
+- Contesto: cosa c'è dietro (termini complessi spiegati inline)
+- Connessioni: trend o eventi correlati
+- Domanda aperta: una questione che il tweet solleva
 ---
 
 Concludi con:
 
 📊 RIEPILOGO @${author}
 - Tema dominante: [tema]
-- Sentiment: [positivo/neutro/negativo] — [una riga di spiegazione]
+- Sentiment: positivo / neutro / negativo — una riga
 - Da monitorare: [cosa osservare nelle prossime 24h]
 
-Rispondi in italiano, conciso.
+Rispondi in italiano. Sii conciso.
 
 TWEET CON CONTESTO:
 ${tweetText}`,
@@ -77,8 +74,7 @@ export async function analyzeSingleTweet(
   tweet: { id: string; author: string; text: string; created_at: string; like_count: number; view_count: number },
   context: string
 ): Promise<string> {
-  const prompt = `Sei un esperto analista che aiuta a comprendere contenuti tecnici e complessi.
-Analizza questo tweet in profondità, spiegando ogni concetto tecnico o termine specifico in modo chiaro.
+  const prompt = `Sei un analista che spiega contenuti tech a un pubblico curioso ma non specializzato.
 
 🐦 TWEET di @${tweet.author} (${new Date(tweet.created_at).toLocaleDateString('it-IT')})
 "${tweet.text}"
@@ -87,35 +83,29 @@ Analizza questo tweet in profondità, spiegando ogni concetto tecnico o termine 
 📰 CONTESTO WEB:
 ${context}
 
-Fornisci un'analisi dettagliata con questo formato:
+Analizza con questo formato:
 
 📖 DI COSA PARLA
-Spiega in 2-3 frasi semplici il messaggio principale del tweet, come se lo spiegassi a qualcuno che non conosce il settore.
-
-🔬 TERMINI E CONCETTI CHIAVE
-Per ogni termine tecnico o concetto specifico presente nel tweet, spiega:
-- Cosa significa
-- Perché è importante in questo contesto
-- Un esempio concreto se utile
+2-3 frasi che spiegano il messaggio principale. Se ci sono termini tecnici complessi, spiegali brevemente inline (es. "RAG — tecnica che combina recupero documenti e generazione AI").
 
 📌 RILEVANZA
 - Impatto: Alto / Medio / Basso — perché
-- Chi riguarda: [settori, professioni, persone coinvolte]
-- Urgenza: [quanto è attuale e perché]
+- Chi riguarda: [settori o professioni coinvolte]
+- Urgenza: [quanto è attuale]
 
 💡 APPROFONDIMENTO
-- Cosa c'è dietro: il contesto più ampio che serve per capire davvero
-- Connessioni: come si collega a trend, eventi o tecnologie correlate
-- Domanda aperta: una questione che questo tweet solleva ma non risponde
+- Contesto: cosa c'è dietro per capire davvero
+- Connessioni: trend o tecnologie correlate
+- Domanda aperta: una questione che il tweet solleva
 
 ⚠️ PUNTI DI ATTENZIONE
-Segnala eventuali affermazioni discutibili, semplificazioni eccessive o aspetti che meritano verifica.
+Affermazioni discutibili o aspetti da verificare. Se non ce ne sono, scrivi "Nessuno rilevante."
 
-Rispondi in italiano. Sii preciso ma accessibile.`;
+Rispondi in italiano. Sii preciso e conciso.`;
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-5',
-    max_tokens: 1024,
+    max_tokens: 2048,
     messages: [{ role: 'user', content: prompt }],
   });
 
