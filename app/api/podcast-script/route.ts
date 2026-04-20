@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 const client = new Anthropic()
 
 export async function POST(request: NextRequest) {
-  // Auth check
   const cookieStore = await cookies()
   const supabase = createServerClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
@@ -64,16 +64,10 @@ Rispondi in italiano. Sii conciso e pratico.`,
     .map((b) => (b as { type: 'text'; text: string }).text)
     .join('\n')
 
-  // Salva in Supabase
-  const adminSupabase = createServerClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {},
-      },
-    }
+  // Salva con service key
+  const adminSupabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
   )
 
   await adminSupabase.from('podcast_scripts').insert({
