@@ -25,7 +25,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
   if (error || !data) notFound();
 
   return (
-    <div style={{ fontFamily: 'Georgia, serif', maxWidth: 720, margin: '40px auto', padding: '0 24px', color: '#222' }}>
+    <div style={{ fontFamily: 'Georgia, serif', maxWidth: 720, margin: '40px auto', padding: '0 24px', color: '#8a8a8a' }}>
       
       <div style={{ borderLeft: '4px solid #1da1f2', paddingLeft: 16, marginBottom: 32 }}>
         <h1 style={{ margin: '0 0 4px', fontSize: 22 }}>🔍 Analisi Tweet</h1>
