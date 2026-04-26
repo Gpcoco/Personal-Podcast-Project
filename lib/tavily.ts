@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 const client = tavily({ apiKey: process.env.TAVILY_API_KEY! });
 const anthropic = new Anthropic();
 
-async function extractKeywords(tweetText: string): Promise<string> {
+async function extractKeywords(tweetText: string): Promise<string[]> {
   const message = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 100,
@@ -20,13 +20,16 @@ Tweet: ${tweetText}`,
   });
 
   const block = message.content[0];
-  if (block.type !== "text") return tweetText.slice(0, 380);
-  return block.text.trim().slice(0, 380);
+  if (block.type !== "text") return [];
+  return block.text.trim().split(/\s+/).slice(0, 5);
 }
 
-export async function getContext(tweetText: string): Promise<string> {
+export async function getContext(
+  tweetText: string
+): Promise<{ keywords: string[]; context: string }> {
   try {
-    const query = await extractKeywords(tweetText);
+    const keywords = await extractKeywords(tweetText);
+    const query = keywords.join(" ");
     console.log(`   🔑 Keywords: ${query}`);
 
     const response = await client.search(query, {
@@ -35,14 +38,16 @@ export async function getContext(tweetText: string): Promise<string> {
     });
 
     if (!response.results || response.results.length === 0) {
-      return "Nessun contesto trovato.";
+      return { keywords, context: "Nessun contesto trovato." };
     }
 
-    return response.results
+    const context = response.results
       .map((r) => `• ${r.title}\n  ${r.content?.slice(0, 200)}`)
       .join("\n\n");
+
+    return { keywords, context };
   } catch (error) {
     console.warn("Tavily error:", error);
-    return "Contesto non disponibile.";
+    return { keywords: [], context: "Contesto non disponibile." };
   }
 }

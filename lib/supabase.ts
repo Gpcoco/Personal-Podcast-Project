@@ -53,9 +53,11 @@ export async function getLatestAnalyses(limit = 20) {
 
 export async function saveSingleAnalysis(
   tweet: { id: string; author: string; text: string; created_at: string; like_count: number; view_count: number; is_reply: boolean },
-  analysis: string
+  analysis: string,
+  keywords: string[],
+  tavilyContext: string
 ): Promise<{ id: string }> {
-  await supabase.from('raw_tweets').upsert({
+  await supabase.from("raw_tweets").upsert({
     tweet_id: tweet.id,
     author: tweet.author,
     text: tweet.text,
@@ -64,19 +66,21 @@ export async function saveSingleAnalysis(
     view_count: tweet.view_count,
     is_reply: tweet.is_reply,
     fetched_at: new Date().toISOString(),
-  }, { onConflict: 'tweet_id' });
+  }, { onConflict: "tweet_id" });
 
   const { data, error } = await supabase
-    .from('twitter_analysis')
+    .from("twitter_analysis")
     .insert({
       author: tweet.author,
       tweet_count: 1,
       analysis,
+      keywords,
+      tavily_context: tavilyContext,
       retrieved_at: new Date().toISOString(),
     })
-    .select('id')
+    .select("id")
     .single();
 
-  if (error || !data) throw new Error('Errore salvataggio analisi');
+  if (error || !data) throw new Error("Errore salvataggio analisi");
   return { id: data.id };
 }
