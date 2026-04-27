@@ -42,7 +42,7 @@ export async function analyzeSingleTweet(
 ${context}`;
 
   const response = await client.messages.create({
-    model: "claude-sonnet-4-5",
+    model: "claude-sonnet-4-6",
     max_tokens: 1024,
     messages: [{ role: "user", content: prompt }],
   });
