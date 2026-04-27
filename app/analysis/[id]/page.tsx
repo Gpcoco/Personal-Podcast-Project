@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
 
+type TavilySource = { title: string; url: string };
+
 function formatAnalysis(text: string) {
   const html = text
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
@@ -23,6 +25,8 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
     .single();
 
   if (error || !data) notFound();
+
+  const sources: TavilySource[] = Array.isArray(data.tavily_sources) ? data.tavily_sources : [];
 
   return (
     <div style={{ fontFamily: 'Georgia, serif', maxWidth: 720, margin: '40px auto', padding: '0 24px', color: '#1a1a1a' }}>
@@ -60,6 +64,32 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Fonti per i commenti LinkedIn */}
+      {sources.length > 0 && (
+        <div style={{ marginTop: 24, padding: 16, background: '#f0f7ff', borderRadius: 8, border: '1px solid #d6e9ff' }}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: '#555', fontFamily: 'sans-serif' }}>
+            🔗 Fonti per i commenti LinkedIn
+          </p>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontFamily: 'sans-serif' }}>
+            {sources.map((s, i) => (
+              <li key={i} style={{ marginBottom: i === sources.length - 1 ? 0 : 12 }}>
+                <a
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#1da1f2', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
+                >
+                  {s.title}
+                </a>
+                <div style={{ fontSize: 12, color: '#888', marginTop: 2, wordBreak: 'break-all' }}>
+                  {s.url}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

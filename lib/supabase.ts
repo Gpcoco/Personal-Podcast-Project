@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { Tweet } from "./twitter";
+import { TavilySource } from "./tavily";
 
 export const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -55,7 +56,8 @@ export async function saveSingleAnalysis(
   tweet: { id: string; author: string; text: string; created_at: string; like_count: number; view_count: number; is_reply: boolean },
   analysis: string,
   keywords: string[],
-  tavilyContext: string
+  tavilyContext: string,
+  tavilySources: TavilySource[] = []
 ): Promise<{ id: string }> {
   await supabase.from("raw_tweets").upsert({
     tweet_id: tweet.id,
@@ -76,6 +78,7 @@ export async function saveSingleAnalysis(
       analysis,
       keywords,
       tavily_context: tavilyContext,
+      tavily_sources: tavilySources,
       retrieved_at: new Date().toISOString(),
     })
     .select("id")

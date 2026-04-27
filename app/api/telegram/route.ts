@@ -40,9 +40,9 @@ export async function POST(req: NextRequest) {
     const tweet = await fetchSingleTweet(tweetId);
     if (!tweet) throw new Error('Tweet non trovato');
 
-    const { keywords, context } = await getContext(tweet.text);
+    const { keywords, context, sources } = await getContext(tweet.text);
     const analysis = await analyzeSingleTweet(tweet, context);
-    const saved = await saveSingleAnalysis(tweet, analysis, keywords, context);
+    const saved = await saveSingleAnalysis(tweet, analysis, keywords, context, sources);
 
     const link = `${BASE_URL}/analysis/${saved.id}`;
     await sendTelegramMessage(chatId, `✅ <b>Analisi completata</b>\n\n🔗 <a href="${link}">Leggi l'analisi completa</a>`);
