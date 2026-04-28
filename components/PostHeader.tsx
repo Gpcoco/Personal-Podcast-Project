@@ -85,20 +85,6 @@ export default function PostHeader({ hook, keywords, author }: PostHeaderProps) 
         {/* Accent bar verticale */}
         <rect x="80" y="80" width="6" height="80" fill="#f59e0b" />
 
-        {/* Author opzionale */}
-        {author && (
-          <text
-            x="110"
-            y="130"
-            fontFamily="ui-sans-serif, system-ui, sans-serif"
-            fontSize="22"
-            fill="#a1a1aa"
-            fontWeight="500"
-          >
-            {author}
-          </text>
-        )}
-
         {/* Hook — testo principale */}
         <g>
           {lines.map((line, i) => (
