@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
-import PostHeader from '@/components/Postheader';
+import PostHeader from '@/components/PostHeader';
 
 type TavilySource = { title: string; url: string };
 
