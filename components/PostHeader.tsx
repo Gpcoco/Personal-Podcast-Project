@@ -1,17 +1,20 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 interface PostHeaderProps {
-  hook: string;        // hook paradossale generato da Haiku (max ~80 char)
-  keywords: string[];  // max 5 keywords (Haiku)
+  initialHook: string;
+  keywords: string[];
+  analysisId: string;
 }
 
 // Path immagine di sfondo (deve stare in /public)
 const BG_IMAGE = '/bg.jpg';
 
-export default function PostHeader({ hook, keywords }: PostHeaderProps) {
+export default function PostHeader({ initialHook, keywords, analysisId }: PostHeaderProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [hook, setHook] = useState(initialHook);
+  const [regenerating, setRegenerating] = useState(false);
 
   // Font-size dinamico in base alla lunghezza dell'hook
   const len = hook.length;
@@ -61,7 +64,6 @@ export default function PostHeader({ hook, keywords }: PostHeaderProps) {
   const handleDownload = async () => {
     if (!svgRef.current) return;
 
-    // Embed dell'immagine come base64 nel SVG (così il canvas non si "tainta")
     const bgResponse = await fetch(BG_IMAGE);
     const bgBlob = await bgResponse.blob();
     const bgBase64 = await new Promise<string>((resolve) => {
@@ -101,6 +103,25 @@ export default function PostHeader({ hook, keywords }: PostHeaderProps) {
       }, 'image/png');
     };
     img.src = url;
+  };
+
+  const handleRegenerate = async () => {
+    setRegenerating(true);
+    try {
+      const res = await fetch('/api/regenerate-hook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ analysisId }),
+      });
+      if (!res.ok) throw new Error('Rigenerazione fallita');
+      const { hook: newHook } = await res.json();
+      setHook(newHook);
+    } catch (e) {
+      console.error(e);
+      alert('Errore nella rigenerazione dell\'hook');
+    } finally {
+      setRegenerating(false);
+    }
   };
 
   return (
@@ -188,22 +209,40 @@ export default function PostHeader({ hook, keywords }: PostHeaderProps) {
         </g>
       </svg>
 
-      <button
-        onClick={handleDownload}
-        style={{
-          marginTop: 12,
-          padding: '10px 20px',
-          background: '#f59e0b',
-          color: '#0a0a0a',
-          border: 'none',
-          borderRadius: 8,
-          fontWeight: 600,
-          cursor: 'pointer',
-          fontSize: 14,
-        }}
-      >
-        ↓ Scarica PNG per LinkedIn
-      </button>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+        <button
+          onClick={handleDownload}
+          style={{
+            padding: '10px 20px',
+            background: '#f59e0b',
+            color: '#0a0a0a',
+            border: 'none',
+            borderRadius: 8,
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontSize: 14,
+          }}
+        >
+          ↓ Scarica PNG per LinkedIn
+        </button>
+
+        <button
+          onClick={handleRegenerate}
+          disabled={regenerating}
+          style={{
+            padding: '10px 20px',
+            background: regenerating ? '#9ca3af' : 'transparent',
+            color: regenerating ? '#fff' : 'var(--text)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            fontWeight: 600,
+            cursor: regenerating ? 'not-allowed' : 'pointer',
+            fontSize: 14,
+          }}
+        >
+          {regenerating ? '⏳ Rigenero...' : '🔄 Rigenera hook'}
+        </button>
+      </div>
     </div>
   );
 }

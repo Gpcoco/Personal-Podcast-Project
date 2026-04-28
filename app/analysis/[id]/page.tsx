@@ -94,10 +94,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
         {/* Header scaricabile per LinkedIn */}
         {hook && data.keywords && data.keywords.length > 0 && (
           <div style={{ marginBottom: 32 }}>
-            <PostHeader
-              hook={hook}
-              keywords={data.keywords}
-            />
+            <PostHeader initialHook={hook} keywords={data.keywords} analysisId={data.id} />
           </div>
         )}
 
