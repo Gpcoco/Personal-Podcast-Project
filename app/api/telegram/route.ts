@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchSingleTweet } from '@/lib/twitter';
 import { getContext } from '@/lib/tavily';
-import { analyzeSingleTweet } from '@/lib/claude';
+import { analyzeSingleTweet, generateHeaderHook } from '@/lib/claude';
 import { saveSingleAnalysis } from '@/lib/supabase';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
@@ -42,7 +42,16 @@ export async function POST(req: NextRequest) {
 
     const { keywords, context, sources } = await getContext(tweet.text);
     const analysis = await analyzeSingleTweet(tweet, context);
-    const saved = await saveSingleAnalysis(tweet, analysis, keywords, context, sources);
+
+    // Genera hook paradossale per l'header (non blocca il flusso se fallisce)
+    let headerHook = '';
+    try {
+      headerHook = await generateHeaderHook(tweet.text, analysis);
+    } catch (e) {
+      console.error('generateHeaderHook failed:', e);
+    }
+
+    const saved = await saveSingleAnalysis(tweet, analysis, keywords, context, sources, headerHook);
 
     const link = `${BASE_URL}/analysis/${saved.id}`;
     await sendTelegramMessage(chatId, `✅ <b>Analisi completata</b>\n\n🔗 <a href="${link}">Leggi l'analisi completa</a>`);

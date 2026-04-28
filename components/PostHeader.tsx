@@ -3,7 +3,7 @@
 import { useRef } from 'react';
 
 interface PostHeaderProps {
-  hook: string;        // prima frase del post LinkedIn
+  hook: string;        // hook paradossale generato da Haiku (max ~80 char)
   keywords: string[];  // max 5 keywords (Haiku)
   author?: string;     // opzionale, es. "@elonmusk"
 }
@@ -14,11 +14,15 @@ const BG_IMAGE = '/bg.jpg';
 export default function PostHeader({ hook, keywords, author }: PostHeaderProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Tronca hook se troppo lungo
-  const displayHook = hook.length > 140 ? hook.slice(0, 137) + '…' : hook;
+  // Sceglie font-size in base alla lunghezza dell'hook
+  // hook breve = font grosso (più impatto), hook lungo = font ridotto
+  const len = hook.length;
+  const fontSize = len <= 40 ? 76 : len <= 60 ? 64 : 54;
+  const charsPerLine = len <= 40 ? 22 : len <= 60 ? 26 : 30;
+  const lineHeight = Math.round(fontSize * 1.15);
 
-  // Wrap manuale del testo: ~32 char per riga a font-size 56
-  const wrapText = (text: string, maxChars = 32): string[] => {
+  // Wrap manuale del testo
+  const wrapText = (text: string, maxChars: number): string[] => {
     const words = text.split(' ');
     const lines: string[] = [];
     let current = '';
@@ -31,10 +35,15 @@ export default function PostHeader({ hook, keywords, author }: PostHeaderProps) 
       }
     }
     if (current.trim()) lines.push(current.trim());
-    return lines.slice(0, 5);
+    return lines.slice(0, 4);
   };
 
-  const lines = wrapText(displayHook);
+  const lines = wrapText(hook, charsPerLine);
+
+  // Centratura verticale del blocco testo
+  const totalTextHeight = lines.length * lineHeight;
+  const textStartY = (628 - totalTextHeight) / 2 + fontSize * 0.75;
+
   const tags = keywords.slice(0, 5);
 
   // Calcolo posizione tag (centrati orizzontalmente)
@@ -49,7 +58,7 @@ export default function PostHeader({ hook, keywords, author }: PostHeaderProps) 
   const handleDownload = async () => {
     if (!svgRef.current) return;
 
-    // Per il PNG: embed dell'immagine come base64 nel SVG (così il canvas non si "tainta")
+    // Embed dell'immagine come base64 nel SVG (così il canvas non si "tainta")
     const bgResponse = await fetch(BG_IMAGE);
     const bgBlob = await bgResponse.blob();
     const bgBase64 = await new Promise<string>((resolve) => {
@@ -58,7 +67,6 @@ export default function PostHeader({ hook, keywords, author }: PostHeaderProps) 
       reader.readAsDataURL(bgBlob);
     });
 
-    // Clone dell'SVG e sostituzione href dell'immagine con base64
     const cloned = svgRef.current.cloneNode(true) as SVGSVGElement;
     const imgEl = cloned.querySelector('image');
     if (imgEl) {
@@ -101,7 +109,6 @@ export default function PostHeader({ hook, keywords, author }: PostHeaderProps) 
         viewBox="0 0 1200 628"
         style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 12 }}
       >
-        {/* Clip per arrotondare gli angoli dell'immagine */}
         <defs>
           <clipPath id="rounded">
             <rect width="1200" height="628" rx="12" />
@@ -122,20 +129,17 @@ export default function PostHeader({ hook, keywords, author }: PostHeaderProps) 
           {/* Overlay scuro semi-trasparente */}
           <rect width="1200" height="628" fill="#000000" opacity="0.55" />
 
-          {/* Accent bar verticale */}
-          <rect x="80" y="80" width="6" height="80" fill="#f59e0b" />
-
-          {/* Hook — testo principale */}
-          <g>
+          {/* Hook — testo principale centrato verticalmente */}
+          <g textAnchor="middle">
             {lines.map((line, i) => (
               <text
                 key={i}
-                x="80"
-                y={220 + i * 70}
+                x="600"
+                y={textStartY + i * lineHeight}
                 fontFamily="ui-serif, Georgia, serif"
-                fontSize="56"
+                fontSize={fontSize}
                 fill="#ffffff"
-                fontWeight="600"
+                fontWeight="700"
               >
                 {line}
               </text>

@@ -66,13 +66,15 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
 
   const sources: TavilySource[] = Array.isArray(data.tavily_sources) ? data.tavily_sources : [];
 
-  // Prima frase non vuota del post = hook per l'header
-  const hook: string = data.analysis
-    .split('\n')
-    .map((l: string) => l.trim())
-    .find((l: string) => l.length > 0)
-    ?.replace(/\*\*/g, '') // rimuove eventuali bold markdown
-    ?? '';
+  // Hook generato da Haiku (header_hook); fallback su prima frase del post se assente (analisi vecchie)
+  const hook: string =
+    data.header_hook && data.header_hook.trim().length > 0
+      ? data.header_hook
+      : (data.analysis
+          .split('\n')
+          .map((l: string) => l.trim())
+          .find((l: string) => l.length > 0)
+          ?.replace(/\*\*/g, '') ?? '');
 
   return (
     <>

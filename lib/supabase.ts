@@ -57,7 +57,8 @@ export async function saveSingleAnalysis(
   analysis: string,
   keywords: string[],
   tavilyContext: string,
-  tavilySources: TavilySource[] = []
+  tavilySources: TavilySource[] = [],
+  headerHook: string = ""
 ): Promise<{ id: string }> {
   await supabase.from("raw_tweets").upsert({
     tweet_id: tweet.id,
@@ -79,6 +80,7 @@ export async function saveSingleAnalysis(
       keywords,
       tavily_context: tavilyContext,
       tavily_sources: tavilySources,
+      header_hook: headerHook,
       retrieved_at: new Date().toISOString(),
     })
     .select("id")
