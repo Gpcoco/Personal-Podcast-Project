@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
 import PostHeader from '@/components/PostHeader';
+import LinkedInEditor from '@/components/LinkedInEditor';
+import SourcesBlock from '@/components/SourcesBlock';
 
 type TavilySource = { title: string; url: string };
 
@@ -95,10 +97,20 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
             <PostHeader
               hook={hook}
               keywords={data.keywords}
-              author={`@${data.author}`}
             />
           </div>
         )}
+
+        {/* Editor LinkedIn (ricco, con copia Unicode) */}
+        <LinkedInEditor
+          initialMarkdown={data.analysis}
+          hashtags={data.keywords || []}
+        />
+
+        {/* Blocco FONTI copia-incolla */}
+        <SourcesBlock sources={sources} />
+
+        {/* ─── Rendering attuale (sotto editor) ─── */}
 
         {/* Post LinkedIn */}
         <div

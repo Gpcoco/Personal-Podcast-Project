@@ -5,21 +5,19 @@ import { useRef } from 'react';
 interface PostHeaderProps {
   hook: string;        // hook paradossale generato da Haiku (max ~80 char)
   keywords: string[];  // max 5 keywords (Haiku)
-  author?: string;     // opzionale, es. "@elonmusk"
 }
 
 // Path immagine di sfondo (deve stare in /public)
 const BG_IMAGE = '/bg.jpg';
 
-export default function PostHeader({ hook, keywords, author }: PostHeaderProps) {
+export default function PostHeader({ hook, keywords }: PostHeaderProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Sceglie font-size in base alla lunghezza dell'hook
-  // hook breve = font grosso (più impatto), hook lungo = font ridotto
+  // Font-size dinamico in base alla lunghezza dell'hook
   const len = hook.length;
-  const fontSize = len <= 40 ? 76 : len <= 60 ? 64 : 54;
-  const charsPerLine = len <= 40 ? 22 : len <= 60 ? 26 : 30;
-  const lineHeight = Math.round(fontSize * 1.15);
+  const fontSize = len <= 40 ? 68 : len <= 60 ? 60 : 52;
+  const charsPerLine = len <= 40 ? 24 : len <= 60 ? 28 : 32;
+  const lineHeight = Math.round(fontSize * 1.18);
 
   // Wrap manuale del testo
   const wrapText = (text: string, maxChars: number): string[] => {
@@ -35,14 +33,19 @@ export default function PostHeader({ hook, keywords, author }: PostHeaderProps) 
       }
     }
     if (current.trim()) lines.push(current.trim());
-    return lines.slice(0, 4);
+    return lines.slice(0, 5);
   };
 
   const lines = wrapText(hook, charsPerLine);
 
-  // Centratura verticale del blocco testo
+  // Calcolo posizione: accent bar + testo, centrati verticalmente come blocco
   const totalTextHeight = lines.length * lineHeight;
-  const textStartY = (628 - totalTextHeight) / 2 + fontSize * 0.75;
+  const blockTop = (628 - totalTextHeight) / 2;
+  const textStartY = blockTop + fontSize * 0.85;
+
+  // Accent bar verticale: stessa altezza del blocco testo
+  const barHeight = totalTextHeight - lineHeight * 0.3;
+  const barY = blockTop + lineHeight * 0.1;
 
   const tags = keywords.slice(0, 5);
 
@@ -129,12 +132,15 @@ export default function PostHeader({ hook, keywords, author }: PostHeaderProps) 
           {/* Overlay scuro semi-trasparente */}
           <rect width="1200" height="628" fill="#000000" opacity="0.55" />
 
-          {/* Hook — testo principale centrato verticalmente */}
-          <g textAnchor="middle">
+          {/* Accent bar verticale gialla a sinistra */}
+          <rect x="80" y={barY} width="6" height={barHeight} fill="#f59e0b" />
+
+          {/* Hook — testo allineato a sinistra */}
+          <g>
             {lines.map((line, i) => (
               <text
                 key={i}
-                x="600"
+                x="110"
                 y={textStartY + i * lineHeight}
                 fontFamily="ui-serif, Georgia, serif"
                 fontSize={fontSize}
