@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
+import PostHeader from '@/components/Postheader';
 
 type TavilySource = { title: string; url: string };
 
@@ -65,6 +66,14 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
 
   const sources: TavilySource[] = Array.isArray(data.tavily_sources) ? data.tavily_sources : [];
 
+  // Prima frase non vuota del post = hook per l'header
+  const hook: string = data.analysis
+    .split('\n')
+    .map((l: string) => l.trim())
+    .find((l: string) => l.length > 0)
+    ?.replace(/\*\*/g, '') // rimuove eventuali bold markdown
+    ?? '';
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: themeCss }} />
@@ -77,6 +86,17 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
             @{data.author} · {new Date(data.retrieved_at).toLocaleDateString('it-IT')}
           </p>
         </div>
+
+        {/* Header scaricabile per LinkedIn */}
+        {hook && data.keywords && data.keywords.length > 0 && (
+          <div style={{ marginBottom: 32 }}>
+            <PostHeader
+              hook={hook}
+              keywords={data.keywords}
+              author={`@${data.author}`}
+            />
+          </div>
+        )}
 
         {/* Post LinkedIn */}
         <div
