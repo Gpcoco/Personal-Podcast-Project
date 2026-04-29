@@ -21,6 +21,12 @@ function isTweetUrl(text: string): boolean {
   return /https?:\/\/(twitter\.com|x\.com)\/\S+\/status\/\d+/.test(text.trim());
 }
 
+function extractTweetId(url: string): string {
+  const match = url.match(/\/status\/(\d+)/);
+  if (!match) throw new Error('ID tweet non trovato nell\'URL');
+  return match[1];
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const message = body?.message;
@@ -40,7 +46,7 @@ export async function POST(req: NextRequest) {
     if (isTweetUrl(text)) {
       // ── FLUSSO TWEET ──────────────────────────────────────────
       await sendMessage(chatId, '🔍 Fetching tweet...');
-      const tweet = await fetchSingleTweet(text);
+      const tweet = await fetchSingleTweet(extractTweetId(text));
 
       await sendMessage(chatId, '🧠 Analisi in corso...');
       const { keywords, context } = await getContext(tweet.text);
