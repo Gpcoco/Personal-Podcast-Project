@@ -1,3 +1,4 @@
+// lib/claude.ts
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 
@@ -19,20 +20,33 @@ async function getPrompt(name: string): Promise<string> {
   return data.content;
 }
 
+type TweetInput = {
+  id: string;
+  author: string;
+  text: string;
+  created_at: string;
+  like_count: number;
+  view_count: number;
+  is_reply?: boolean;
+};
+
 export async function analyzeSingleTweet(
-  tweet: {
-    id: string;
-    author: string;
-    text: string;
-    created_at: string;
-    like_count: number;
-    view_count: number;
-  },
+  tweet: TweetInput,
   context: string
 ): Promise<string> {
   const promptTemplate = await getPrompt("single_tweet_analysis");
 
-  const prompt = `${promptTemplate}
+  const isManual = tweet.author === 'GPRIOR';
+
+  const prompt = isManual
+    ? `${promptTemplate}
+
+✍️ TESTO di ${tweet.author} (${new Date(tweet.created_at).toLocaleDateString("it-IT")})
+"${tweet.text}"
+
+📰 CONTESTO WEB:
+${context}`
+    : `${promptTemplate}
 
 🐦 TWEET di @${tweet.author} (${new Date(tweet.created_at).toLocaleDateString("it-IT")})
 "${tweet.text}"
@@ -95,9 +109,8 @@ Rispondi SOLO con l'hook, niente altro. Niente preamboli, niente spiegazioni.`;
     .map((b) => (b as { type: "text"; text: string }).text)
     .join("")
     .trim()
-    .replace(/^["']|["']$/g, ""); // rimuove eventuali virgolette esterne
+    .replace(/^["']|["']$/g, "");
 
-  // Safety net: se Haiku sfora, tronca alla parola intera più vicina
   if (raw.length <= 80) return raw;
   const truncated = raw.slice(0, 80);
   const lastSpace = truncated.lastIndexOf(" ");
