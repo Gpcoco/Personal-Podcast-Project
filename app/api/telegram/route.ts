@@ -1,13 +1,15 @@
+// app/api/telegram/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchSingleTweet } from '@/lib/twitter';
+import { analyzeSingleTweet } from '@/lib/claude';
 import { getContext } from '@/lib/tavily';
-import { analyzeSingleTweet, generateHeaderHook } from '@/lib/claude';
 import { saveSingleAnalysis } from '@/lib/supabase';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID!;
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL!;
 
-async function sendTelegramMessage(chatId: number, text: string) {
+async function sendMessage(chatId: string, text: string) {
   await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -15,9 +17,8 @@ async function sendTelegramMessage(chatId: number, text: string) {
   });
 }
 
-function extractTweetId(url: string): string | null {
-  const match = url.match(/status\/(\d+)/);
-  return match ? match[1] : null;
+function isTweetUrl(text: string): boolean {
+  return /https?:\/\/(twitter\.com|x\.com)\/\S+\/status\/\d+/.test(text.trim());
 }
 
 export async function POST(req: NextRequest) {
@@ -25,41 +26,57 @@ export async function POST(req: NextRequest) {
   const message = body?.message;
   if (!message) return NextResponse.json({ ok: true });
 
-  const chatId: number = message.chat.id;
-  const text: string = message.text || '';
+  const chatId = String(message.chat.id);
+  const text: string = message.text?.trim() ?? '';
 
-  const tweetId = extractTweetId(text);
-  if (!tweetId) {
-    await sendTelegramMessage(chatId, '❌ URL non valido. Invia un link Twitter/X nel formato:\nhttps://x.com/user/status/123456789');
+  if (!text) return NextResponse.json({ ok: true });
+
+  // Sicurezza: ignora messaggi da chat non autorizzate
+  if (chatId !== TELEGRAM_CHAT_ID) {
+    await sendMessage(chatId, '⛔ Non autorizzato.');
     return NextResponse.json({ ok: true });
   }
 
-  await sendTelegramMessage(chatId, '⏳ Analisi in corso...');
-
   try {
-    const tweet = await fetchSingleTweet(tweetId);
-    if (!tweet) throw new Error('Tweet non trovato');
+    if (isTweetUrl(text)) {
+      // ── FLUSSO TWEET ──────────────────────────────────────────
+      await sendMessage(chatId, '🔍 Fetching tweet...');
+      const tweet = await fetchSingleTweet(text);
 
-    const { keywords, context, sources } = await getContext(tweet.text);
-    const analysis = await analyzeSingleTweet(tweet, context);
+      await sendMessage(chatId, '🧠 Analisi in corso...');
+      const { keywords, context } = await getContext(tweet.text);
+      const analysis = await analyzeSingleTweet(tweet.text, context);
+      const id = await saveSingleAnalysis(tweet, analysis, keywords, context);
 
-    // Genera hook paradossale per l'header (non blocca il flusso se fallisce)
-    let headerHook = '';
-    try {
-      headerHook = await generateHeaderHook(tweet.text, analysis);
-    } catch (e) {
-      console.error('generateHeaderHook failed:', e);
+      await sendMessage(chatId, `✅ Analisi pronta:\n${BASE_URL}/analysis/${id}`);
+    } else {
+      // ── FLUSSO TESTO LIBERO ───────────────────────────────────
+      if (text.length < 20) {
+        await sendMessage(chatId, '⚠️ Testo troppo breve. Invia almeno 20 caratteri.');
+        return NextResponse.json({ ok: true });
+      }
+
+      await sendMessage(chatId, '🧠 Analisi testo in corso...');
+      const { keywords, context } = await getContext(text);
+      const analysis = await analyzeSingleTweet(text, context);
+
+      // Fake tweet object con author GPRIOR
+      const fakeTweet = {
+        id: `manual_${Date.now()}`,
+        author: 'GPRIOR',
+        text,
+        created_at: new Date().toISOString(),
+        like_count: 0,
+        view_count: 0,
+        is_reply: false,
+      };
+
+      const id = await saveSingleAnalysis(fakeTweet, analysis, keywords, context);
+      await sendMessage(chatId, `✅ Analisi pronta:\n${BASE_URL}/analysis/${id}`);
     }
-
-    const saved = await saveSingleAnalysis(tweet, analysis, keywords, context, sources, headerHook);
-
-    const link = `${BASE_URL}/analysis/${saved.id}`;
-    await sendTelegramMessage(chatId, `✅ <b>Analisi completata</b>\n\n🔗 <a href="${link}">Leggi l'analisi completa</a>`);
-
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Errore sconosciuto';
+  } catch (err) {
     console.error(err);
-    await sendTelegramMessage(chatId, `❌ Errore: ${msg}`);
+    await sendMessage(chatId, '❌ Errore durante l\'analisi. Riprova.');
   }
 
   return NextResponse.json({ ok: true });
