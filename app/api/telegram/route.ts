@@ -31,7 +31,6 @@ export async function POST(req: NextRequest) {
 
   if (!text) return NextResponse.json({ ok: true });
 
-  // Sicurezza: ignora messaggi da chat non autorizzate
   if (chatId !== TELEGRAM_CHAT_ID) {
     await sendMessage(chatId, '⛔ Non autorizzato.');
     return NextResponse.json({ ok: true });
@@ -45,7 +44,7 @@ export async function POST(req: NextRequest) {
 
       await sendMessage(chatId, '🧠 Analisi in corso...');
       const { keywords, context } = await getContext(tweet.text);
-      const analysis = await analyzeSingleTweet(tweet.text, context);
+      const analysis = await analyzeSingleTweet(tweet, context);
       const id = await saveSingleAnalysis(tweet, analysis, keywords, context);
 
       await sendMessage(chatId, `✅ Analisi pronta:\n${BASE_URL}/analysis/${id}`);
@@ -57,10 +56,7 @@ export async function POST(req: NextRequest) {
       }
 
       await sendMessage(chatId, '🧠 Analisi testo in corso...');
-      const { keywords, context } = await getContext(text);
-      const analysis = await analyzeSingleTweet(text, context);
 
-      // Fake tweet object con author GPRIOR
       const fakeTweet = {
         id: `manual_${Date.now()}`,
         author: 'GPRIOR',
@@ -71,7 +67,10 @@ export async function POST(req: NextRequest) {
         is_reply: false,
       };
 
+      const { keywords, context } = await getContext(fakeTweet.text);
+      const analysis = await analyzeSingleTweet(fakeTweet, context);
       const id = await saveSingleAnalysis(fakeTweet, analysis, keywords, context);
+
       await sendMessage(chatId, `✅ Analisi pronta:\n${BASE_URL}/analysis/${id}`);
     }
   } catch (err) {
