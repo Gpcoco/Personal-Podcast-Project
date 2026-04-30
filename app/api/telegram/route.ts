@@ -49,9 +49,9 @@ export async function POST(req: NextRequest) {
       const tweet = await fetchSingleTweet(extractTweetId(text));
 
       await sendMessage(chatId, '🧠 Analisi in corso...');
-      const { keywords, context } = await getContext(tweet.text);
+      const { keywords, context, sources } = await getContext(tweet.text);
       const analysis = await analyzeSingleTweet(tweet, context);
-      const { id } = await saveSingleAnalysis(tweet, analysis, keywords, context);
+      const { id } = await saveSingleAnalysis(tweet, analysis, keywords, context, sources);
 
       await sendMessage(chatId, `✅ Analisi pronta:\n${BASE_URL}/analysis/${id}`);
     } else {
@@ -73,9 +73,9 @@ export async function POST(req: NextRequest) {
         is_reply: false,
       };
 
-      const { keywords, context } = await getContext(fakeTweet.text);
+      const { keywords, context, sources } = await getContext(fakeTweet.text);
       const analysis = await analyzeSingleTweet(fakeTweet, context);
-      const { id } = await saveSingleAnalysis(fakeTweet, analysis, keywords, context);
+      const { id } = await saveSingleAnalysis(fakeTweet, analysis, keywords, context, sources);
 
       await sendMessage(chatId, `✅ Analisi pronta:\n${BASE_URL}/analysis/${id}`);
     }
