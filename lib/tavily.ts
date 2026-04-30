@@ -42,7 +42,7 @@ export async function getContext(
     console.log(`   🔑 Keywords: ${query}`);
 
     const response = await client.search(query, {
-      searchDepth: "basic",
+      searchDepth: "advanced",
       maxResults: 3,
     });
 
@@ -55,7 +55,7 @@ export async function getContext(
     }
 
     const context = response.results
-      .map((r) => `• ${r.title}\n  ${r.content?.slice(0, 200)}`)
+      .map((r) => `• ${r.title}\n  ${r.content?.slice(0, 500)}`)
       .join("\n\n");
 
     const sources: TavilySource[] = response.results
