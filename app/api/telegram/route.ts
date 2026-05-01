@@ -1,13 +1,17 @@
 // app/api/telegram/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchSingleTweet } from '@/lib/twitter';
-import { analyzeSingleTweet } from '@/lib/claude';
 import { getContext } from '@/lib/tavily';
-import { saveSingleAnalysis } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID!;
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL!;
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
+);
 
 async function sendMessage(chatId: string, text: string) {
   await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -43,45 +47,48 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    let tweetText: string;
+    let author: string;
+
     if (isTweetUrl(text)) {
-      // ── FLUSSO TWEET ──────────────────────────────────────────
       await sendMessage(chatId, '🔍 Fetching tweet...');
       const tweet = await fetchSingleTweet(extractTweetId(text));
-
-      await sendMessage(chatId, '🧠 Analisi in corso...');
-      const { keywords, context, sources } = await getContext(tweet.text);
-      const analysis = await analyzeSingleTweet(tweet, context);
-      const { id } = await saveSingleAnalysis(tweet, analysis, keywords, context, sources);
-
-      await sendMessage(chatId, `✅ Analisi pronta:\n${BASE_URL}/analysis/${id}`);
+      tweetText = tweet.text;
+      author = tweet.author;
     } else {
-      // ── FLUSSO TESTO LIBERO ───────────────────────────────────
       if (text.length < 20) {
         await sendMessage(chatId, '⚠️ Testo troppo breve. Invia almeno 20 caratteri.');
         return NextResponse.json({ ok: true });
       }
-
-      await sendMessage(chatId, '🧠 Analisi testo in corso...');
-
-      const fakeTweet = {
-        id: `manual_${Date.now()}`,
-        author: 'GPRIOR',
-        text,
-        created_at: new Date().toISOString(),
-        like_count: 0,
-        view_count: 0,
-        is_reply: false,
-      };
-
-      const { keywords, context, sources } = await getContext(fakeTweet.text);
-      const analysis = await analyzeSingleTweet(fakeTweet, context);
-      const { id } = await saveSingleAnalysis(fakeTweet, analysis, keywords, context, sources);
-
-      await sendMessage(chatId, `✅ Analisi pronta:\n${BASE_URL}/analysis/${id}`);
+      tweetText = text;
+      author = 'GPCOCO';
     }
+
+    await sendMessage(chatId, '🔎 Ricerca contesto...');
+    const { keywords, context } = await getContext(tweetText);
+
+    const { data, error } = await supabase
+      .from('twitter_analysis')
+      .insert({
+        author,
+        tweet_text: tweetText,
+        keywords,
+        tavily_context: context, // { links: string[], snippets: string[] }
+        tweet_count: 1,
+        analysis: null,
+        model_used: null,
+        notes: null,
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+
+    await sendMessage(chatId, `✅ Pronto!\n<a href="${BASE_URL}/analysis/${data.id}">Apri analisi</a>`);
+
   } catch (err) {
     console.error(err);
-    await sendMessage(chatId, '❌ Errore durante l\'analisi. Riprova.');
+    await sendMessage(chatId, '❌ Errore durante l\'elaborazione. Riprova.');
   }
 
   return NextResponse.json({ ok: true });

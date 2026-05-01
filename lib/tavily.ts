@@ -4,9 +4,9 @@ import Anthropic from "@anthropic-ai/sdk";
 const client = tavily({ apiKey: process.env.TAVILY_API_KEY! });
 const anthropic = new Anthropic();
 
-export type TavilySource = {
-  title: string;
-  url: string;
+export type TavilyContext = {
+  links: string[];
+  snippets: string[];
 };
 
 async function extractKeywords(tweetText: string): Promise<string[]> {
@@ -33,8 +33,7 @@ export async function getContext(
   tweetText: string
 ): Promise<{
   keywords: string[];
-  context: string;
-  sources: TavilySource[];
+  context: TavilyContext;
 }> {
   try {
     const keywords = await extractKeywords(tweetText);
@@ -49,29 +48,24 @@ export async function getContext(
     if (!response.results || response.results.length === 0) {
       return {
         keywords,
-        context: "Nessun contesto trovato.",
-        sources: [],
+        context: { links: [], snippets: [] },
       };
     }
 
-    const context = response.results
-      .map((r) => `• ${r.title}\n  ${r.content?.slice(0, 500)}`)
-      .join("\n\n");
+    const links = response.results
+      .filter((r) => r.url)
+      .map((r) => r.url);
 
-    const sources: TavilySource[] = response.results
-      .filter((r) => r.url && r.title)
-      .map((r) => ({
-        title: r.title,
-        url: r.url,
-      }));
+    const snippets = response.results
+      .map((r) => `${r.title}\n${r.content?.slice(0, 500) ?? ''}`);
 
-    return { keywords, context, sources };
+    return { keywords, context: { links, snippets } };
+
   } catch (error) {
     console.warn("Tavily error:", error);
     return {
       keywords: [],
-      context: "Contesto non disponibile.",
-      sources: [],
+      context: { links: [], snippets: [] },
     };
   }
 }
