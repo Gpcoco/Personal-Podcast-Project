@@ -1,62 +1,56 @@
-// app/api/generate-synthesis/route.ts
+// app/api/generate-analysis/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
-import { supabase } from '@/lib/supabase';
-
-const client = new Anthropic();
+import { analyzeSingleTweet, generateHeaderHook, generateContribution } from '@/lib/claude';
+import { updateAnalysis, saveContribution, supabase } from '@/lib/supabase';
 
 export async function POST(req: NextRequest) {
-  const { contributionIds } = await req.json();
+  const { analysisId, tweetText, author, context, notes, model, maxTokens, sources } = await req.json();
 
-  if (!contributionIds?.length) {
-    return NextResponse.json({ error: 'Nessun contributo selezionato' }, { status: 400 });
+  if (!analysisId || !tweetText) {
+    return NextResponse.json({ error: 'Parametri mancanti' }, { status: 400 });
   }
 
   try {
-    const { data: contributions, error } = await supabase
-      .from('contributions')
-      .select('id, text, keywords')
-      .in('id', contributionIds);
-
-    if (error || !contributions?.length) throw new Error('Contributi non trovati');
-
-    const allKeywords = [...new Set(contributions.flatMap(c => c.keywords ?? []))];
-    const contributionsText = contributions
-      .map((c, i) => `${i + 1}. ${c.text}`)
-      .join('\n\n');
-
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      messages: [{
-        role: 'user',
-        content: `Sintetizza i seguenti contributi in un testo coerente di circa 500 parole. 
-Tono professionale e divulgativo, adatto a una knowledge base personale.
-Non elencare i punti — scrivi in prosa fluida.
-Non fare riferimento ai "contributi" o alle "fonti" — scrivi come se fosse un'analisi originale.
-
-CONTRIBUTI:
-${contributionsText}`,
-      }],
-    });
-
-    const text = response.content
-      .filter(b => b.type === 'text')
-      .map(b => (b as { type: 'text'; text: string }).text)
-      .join('');
-
-    const { data: saved, error: saveError } = await supabase
-      .from('syntheses')
-      .insert({ contribution_ids: contributionIds, keywords: allKeywords, text })
-      .select('id')
+    // Leggi keywords da DB
+    const { data: record, error } = await supabase
+      .from('twitter_analysis')
+      .select('keywords')
+      .eq('id', analysisId)
       .single();
 
-    if (saveError || !saved) throw new Error('Errore salvataggio sintesi');
+    if (error || !record) throw new Error('Record non trovato');
+    const keywords: string[] = record.keywords ?? [];
 
-    return NextResponse.json({ id: saved.id, text, keywords: allKeywords });
+    const fakeTweet = {
+      id: analysisId,
+      author,
+      text: tweetText,
+      created_at: new Date().toISOString(),
+      like_count: 0,
+      view_count: 0,
+      is_reply: false,
+    };
+
+    const analysis = await analyzeSingleTweet(
+      fakeTweet,
+      { links: sources ?? [], snippets: [context] },
+      { model, maxTokens, notes }
+    );
+
+    const [hook, contribution] = await Promise.all([
+      generateHeaderHook(tweetText, analysis),
+      generateContribution(tweetText, analysis),
+    ]);
+
+    await Promise.all([
+      updateAnalysis(analysisId, analysis, model, notes ?? null, hook),
+      saveContribution(analysisId, contribution, keywords),
+    ]);
+
+    return NextResponse.json({ analysis, hook });
 
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: 'Errore generazione sintesi' }, { status: 500 });
+    return NextResponse.json({ error: 'Errore generazione' }, { status: 500 });
   }
 }
