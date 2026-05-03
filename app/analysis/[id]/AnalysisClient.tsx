@@ -106,6 +106,8 @@ export default function AnalysisClient({
   // ── Genera analisi ──
   const handleGenerate = async () => {
     setGenerating(true);
+      console.log('DEBUG payload:', { analysisId: id, tweetText, author }); // ← aggiungi
+
     try {
       const fullContext = [
         ...tavilySnippets.map((s, i) => articleTexts[i] || s),
